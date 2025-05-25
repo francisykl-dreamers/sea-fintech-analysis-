@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive APAC Payment Solutions Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Visualization & Content Choices:
+        - Report Info: APAC Market Growth (Section 1.3) -> Goal: Show market dynamism -> Viz: Bar Chart (Chart.js) -> Interaction: Hover for details -> Justification: Clear visual comparison of growth rates.
+        - Report Info: Competitor Details (Sections 2.1-2.5) -> Goal: Allow detailed exploration of each competitor -> Viz: Interactive Cards & Tables (HTML/Tailwind + JS) -> Interaction: Filter by category, expand cards for details, sort tables. NEW: AI-powered SWOT analysis for each competitor (Gemini API) -> Justification: Easy access and comparison of rich competitor data, enhanced with dynamic, AI-driven insights.
+        - Report Info: Key Features Comparison (Section 3.3) -> Goal: Compare feature offerings -> Viz: Interactive Table (HTML/Tailwind + JS) -> Interaction: Filter by feature, sort by competitor -> Justification: Highlights feature parity and differentiation.
+        - Report Info: Pricing Comparison (Section 4.2) -> Goal: Compare fee structures -> Viz: Interactive Table (HTML/Tailwind + JS) -> Interaction: Sort by fee type -> Justification: Clear overview of pricing landscape.
+        - Report Info: Technology & Integration (Section 5.3) -> Goal: Compare tech capabilities -> Viz: Interactive Table (HTML/Tailwind + JS) -> Interaction: Filter/Sort -> Justification: Highlights tech adoption.
+        - Report Info: Future Trends (Section 6) -> Goal: Inform on market direction -> Viz: Styled Text Blocks with Icons (HTML/Tailwind) -> Interaction: Read-only -> Justification: Clear presentation of forward-looking insights.
+        - Report Info: Strategic Questions (User's initial query, answered using report content) -> Goal: Provide synthesized answers -> Viz: Structured Text (HTML/Tailwind) -> Interaction: Read-only, links to data -> Justification: Directly addresses user needs by leveraging report insights.
+        CONFIRMING NO SVG/Mermaid. All charts via Chart.js. Diagrams/visual elements via HTML/CSS/Tailwind/Unicode. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; height: 300px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 350px; } }
+        .table-cell { padding: 8px; border: 1px solid #e5e7eb; text-align: left; font-size: 0.875rem; }
+        .table-header { padding: 8px; border: 1px solid #e5e7eb; text-align: left; font-weight: bold; background-color: #f9fafb; font-size: 0.875rem; }
+        .nav-button { padding: 0.5rem 1rem; border-radius: 0.375rem; transition: background-color 0.3s ease; }
+        .nav-button.active { background-color: #0284c7; color: white; }
+        .nav-button:not(.active):hover { background-color: #e0f2fe; }
+        .dropdown-content { display: none; position: absolute; background-color: #f9f9f9; min-width: 200px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1; border-radius: 0.375rem; }
+        .dropdown-content button { color: black; padding: 12px 16px; text-decoration: none; display: block; width: 100%; text-align: left; border-radius: 0; }
+        .dropdown-content button:hover { background-color: #f1f1f1 }
+        .dropdown:hover .dropdown-content { display: block; }
+        .sticky-nav { position: sticky; top: 0; z-index: 50; background-color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card { background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1.5rem; }
+        .card h3 { font-size: 1.25rem; font-weight: 600; color: #1f2937; margin-bottom: 0.5rem; }
+        .card p { color: #4b5563; margin-bottom: 0.25rem; }
+        .card strong { color: #374151; }
+        .tab-button { padding: 0.5rem 1rem; border-radius: 0.375rem; margin-right: 0.5rem; cursor: pointer; }
+        .tab-button.active { background-color: #0ea5e9; color: white; }
+        .tab-button:not(.active) { background-color: #e5e7eb; color: #374151; }
+        .filter-input { padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; margin-right: 0.5rem; }
+        .filter-button { padding: 0.5rem 1rem; background-color: #0ea5e9; color: white; border-radius: 0.375rem; cursor: pointer; }
+        .expandable-content { display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
+        .expand-button { color: #0ea5e9; cursor: pointer; text-decoration: underline; font-size: 0.875rem; }
+        .section-intro { font-size: 1rem; color: #4b5563; margin-bottom: 1.5rem; line-height: 1.6; }
+        .swot-section { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
+        .swot-section h4 { font-weight: 600; margin-bottom: 0.5rem; color: #374151; }
+        .swot-section ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 0.5rem; }
+        .swot-section li { margin-bottom: 0.25rem; }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 2s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-stone-100 text-neutral-800">
+    <header class="bg-sky-700 text-white p-6 text-center">
+        <h1 class="text-3xl font-bold">Competitive Landscape Analysis: Asia-Pacific Payment Solutions</h1>
+    </header>
+
+    <nav id="mainNav" class="sticky-nav p-4 flex flex-wrap justify-center items-center space-x-2">
+        <button class="nav-button active" onclick="showSection('overview')">Overview</button>
+        <div class="dropdown relative inline-block">
+            <button class="nav-button" onclick="showSection('competitorLandscape')">Competitor Landscape &#9662;</button>
+            <div class="dropdown-content">
+                <button onclick="filterCompetitors('all', 'competitorLandscape')">All Categories</button>
+                <button onclick="filterCompetitors('regional', 'competitorLandscape')">Regional & Local</button>
+                <button onclick="filterCompetitors('globalFintech', 'competitorLandscape')">Global Fintechs & Neobanks</button>
+                <button onclick="filterCompetitors('globalProcessors', 'competitorLandscape')">Global Payment Processors</button>
+                <button onclick="filterCompetitors('specialized', 'competitorLandscape')">Specialized Solutions</button>
+            </div>
+        </div>
+        <div class="dropdown relative inline-block">
+            <button class="nav-button" onclick="showSection('comparativeAnalysis')">Comparative Analysis &#9662;</button>
+            <div class="dropdown-content">
+                <button onclick="showComparativeTable('featuresTable')">Key Features</button>
+                <button onclick="showComparativeTable('pricingTable')">Pricing Structures</button>
+                <button onclick="showComparativeTable('techTable')">Technology & Integration</button>
+            </div>
+        </div>
+        <button class="nav-button" onclick="showSection('marketTrends')">Market Trends & Outlook</button>
+        <button class="nav-button" onclick="showSection('strategicInsights')">Strategic Insights</button>
+    </nav>
+
+    <main class="container mx-auto p-4 md:p-8">
+        <section id="overview" class="content-section">
+            <h2 class="text-2xl font-semibold mb-4 text-sky-700">Overview</h2>
+            <div class="card">
+                <h3 class="text-xl font-semibold mb-3 text-sky-600">Executive Summary</h3>
+                <p class="section-intro">The Asia-Pacific (APAC) payment landscape is undergoing a profound digital transformation, marked by increasing mobile adoption and governmental initiatives aimed at fostering cashless economies. This dynamic environment is characterized by intense competition among a diverse array of players. This section provides a high-level summary of the market dynamics, key trends, and strategic considerations for success.</p>
+                <div id="executiveSummaryContent" class="prose max-w-none">
+                    <p>A notable shift involves the increasing digitization of Business-to-Business (B2B) payments, alongside the strategic leveraging of credit cards for working capital optimization and reward accumulation.</p>
+                    <p>Key competitive trends shaping this market include the widespread adoption of artificial intelligence (AI) and machine learning for enhancing operational efficiency and bolstering fraud detection capabilities. The emergence of embedded finance and platform-based solutions is also a significant development, as is a strong emphasis on streamlining cross-border payment processes. In this evolving regulatory environment, compliance and data security are not merely operational necessities but have become critical competitive advantages. The market is also witnessing a trend towards consolidation, driven by strategic partnerships and targeted merger and acquisition activities.</p>
+                    <p>To succeed in this competitive arena, market participants must prioritize the development of seamless, secure, and cost-effective cross-border payment capabilities. A deep investment in AI-driven automation is essential for achieving operational efficiencies and maintaining a competitive edge. Furthermore, exploring embedded finance models offers a pathway to creating integrated financial ecosystems that can capture and retain customer value. Differentiated value propositions centered around cash flow optimization and attractive reward programs, coupled with transparent pricing structures, are crucial for attracting new customers and fostering long-term loyalty.</p>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="text-xl font-semibold mb-3 text-sky-600">Asia-Pacific Digital Payments Ecosystem</h3>
+                 <p class="section-intro">The APAC digital payments market is experiencing explosive growth, driven by fintech innovation, supportive regulations, and evolving consumer preferences. This section highlights key growth metrics and critical focus areas like cross-border payments, alongside challenges such as cybersecurity.</p>
+                <p>The APAC digital payments market is experiencing a period of explosive growth. Non-cash payments in the region expanded at a remarkable rate of 20.4% year-over-year in 2024, significantly outpacing growth rates observed in Europe (15.5%) and North America (6.4%).[1] This accelerated expansion is primarily driven by continuous fintech innovation, supported by conducive regulatory environments in key financial hubs such as Singapore and Hong Kong, and evolving consumer preferences for digital transactions.[2, 3]</p>
+                <div class="chart-container my-6">
+                    <canvas id="apacGrowthChart"></canvas>
+                </div>
+                <p>A critical area of focus within this ecosystem is cross-border payments. Initiatives like Project Nexus, which aims to link real-time payment systems across countries such as Singapore, Thailand, and India, underscore the region's commitment to building advanced cross-border payment infrastructure.[1] Despite this rapid advancement, the market faces significant challenges, including persistent cybersecurity threats and the complexities of navigating diverse regulatory compliance requirements across different jurisdictions.[2] These factors necessitate continuous adaptation and investment from market participants.</p>
+            </div>
+             <div class="card">
+                <h3 class="text-xl font-semibold mb-3 text-sky-600">Introduction to the Analysis</h3>
+                <p class="section-intro">This analysis provides a comprehensive look at the payment solutions landscape in APAC. It examines strategies, offerings, and market positions of key players, aiming to deliver actionable insights for stakeholders.</p>
+                <h4>Purpose and Scope</h4>
+                <p>This report provides a comprehensive competitive analysis of the payment solutions landscape within the Asia-Pacific region. The objective is to examine the strategies, product offerings, and market positioning of key players across various segments, including regional platforms, global fintechs, payment processors, and specialized solutions. The analysis encompasses market positioning, product analysis, pricing structures, technological infrastructure, customer engagement strategies, and anticipated future trends. The aim is to deliver actionable insights that can inform strategic decision-making for stakeholders operating within or looking to enter this vibrant market.</p>
+                <h4>Methodology and Approach</h4>
+                <p>The analysis relies on a thorough synthesis of provided informational materials. This involves extracting explicit data points and systematically developing deeper understandings. Initially, direct facts are identified, followed by an analysis of their immediate implications. Subsequently, broader strategic consequences or market shifts are inferred. This multi-layered approach ensures a robust and nuanced understanding of the competitive dynamics. Information is cross-referenced across multiple sources to enhance the reliability and comprehensiveness of the findings.</p>
+            </div>
+        </section>
+
+        <section id="competitorLandscape" class="content-section" style="display: none;">
+            <h2 class="text-2xl font-semibold mb-4 text-sky-700">Competitor Landscape</h2>
+            <p class="section-intro">Explore the diverse players in the APAC payment solutions market, segmented by their operational focus. Use the filters in the navigation bar to narrow down categories. Click on a competitor's name to view more details about their value proposition, B2B/B2C focus, and geographic reach. ✨ Click the 'Generate SWOT Analysis' button to get AI-powered strategic insights for each competitor! ✨</p>
+            <div id="competitorGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+        </section>
+
+        <section id="comparativeAnalysis" class="content-section" style="display: none;">
+            <h2 class="text-2xl font-semibold mb-4 text-sky-700">Comparative Analysis</h2>
+            <p class="section-intro">This section provides interactive tables to compare competitors across key features, pricing structures, and technology integrations. Select a comparison type from the navigation dropdown to explore the data.</p>
+            <div id="featuresTableContainer" class="comparative-table-content my-6 overflow-x-auto"></div>
+            <div id="pricingTableContainer" class="comparative-table-content my-6 overflow-x-auto" style="display:none;"></div>
+            <div id="techTableContainer" class="comparative-table-content my-6 overflow-x-auto" style="display:none;"></div>
+        </section>
+
+        <section id="marketTrends" class="content-section" style="display: none;">
+            <h2 class="text-2xl font-semibold mb-4 text-sky-700">Market Trends & Outlook</h2>
+            <p class="section-intro">The APAC payment solutions market is dynamic and rapidly evolving. This section outlines key future trends and strategic shifts, including the deepening integration of AI, expansion of cross-border payments, rise of embedded finance, regulatory adaptations, and market consolidation.</p>
+            <div class="space-y-6">
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-sky-600">Deepening AI Integration and Automation</h3>
+                    <p>The pervasive adoption of AI and machine learning is a defining trend for 2025 and beyond.[1, 2] Financial institutions in Asia are leading globally in AI initiatives, moving beyond experimentation to strategic adoption in areas like fraud detection, compliance, personalization, and customer service.[1] This signifies a shift from basic automation to intelligent, adaptive systems that can optimize complex workflows and provide predictive insights.[102] Companies like Razorpay are already leveraging AI-driven payment suites to enhance operational efficiency.[36] The increasing investment in AI infrastructure, including supercomputing hubs and AI gigafactories, indicates a long-term commitment to AI as a core layer of the future tech stack.[103] This will lead to more sophisticated fraud prevention, real-time reconciliation, and highly personalized financial services.</p>
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-sky-600">Expansion of Cross-Border Payments and Infrastructure</h3>
+                    <p>Cross-border payments remain a top priority in APAC, with ongoing efforts to build robust infrastructure that links real-time payment systems across countries.[1] The market is driven by the increasing digitization of financial processes and the expansion of cross-border trade, which necessitates seamless and cost-effective international transaction solutions.[104] The growth of digital wallets and blockchain-based platforms is further enhancing the cross-border payment landscape by enabling secure, lower-cost transactions.[104] The development of Central Bank Digital Currencies (CBDCs) and stablecoins also holds significant potential to redefine the speed, cost, and accessibility of cross-border payments, with pilot programs gaining traction in Hong Kong and Singapore.[105, 106] This will likely lead to greater interoperability and reduced friction in international money movement.</p>
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-sky-600">Rise of Embedded Finance and Platform-Based Solutions</h3>
+                    <p>Embedded finance is maturing into a strategic growth model across APAC, integrating financial services directly into daily experiences within various industries, including e-commerce and transportation.[1, 107] This trend is driven by the increasing digital adoption and the desire to offer seamless, integrated financial solutions. Platforms are increasingly leveraging embedded finance to enhance customer experiences and promote financial inclusion among underserved populations.[107] This shift allows non-financial companies to offer financial products, blurring traditional industry boundaries and creating new revenue streams.[21] The continued growth of B2B marketplaces and SaaS applications will further accelerate the demand for integrated payment solutions that can handle complex multi-party money flows and provide digital financing options like Buy Now, Pay Later (BNPL).[108, 109]</p>
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-sky-600">Regulatory Adaptation and Cybersecurity Resilience</h3>
+                    <p>As digital payments proliferate and new technologies emerge, regulatory frameworks are continuously strengthening across APAC, particularly in areas like anti-money laundering (AML), fraud prevention, and data protection.[2, 110] Regulators in Singapore and Hong Kong are enhancing risk-based controls and emphasizing AI/ML-driven monitoring to balance innovation with effective compliance.[110] Cybersecurity threats are also evolving, with a significant surge in cyberattacks in APAC, making robust cybersecurity and digital trust critical foundations for fintech growth.[1, 2] Companies must invest in strong compliance infrastructure and collaborative initiatives to counter new types of fraud and risks, ensuring security and trust in the digital payment ecosystem.</p>
+                </div>
+                <div class="card">
+                    <h3 class="text-xl font-semibold text-sky-600">Market Consolidation and Strategic Partnerships</h3>
+                    <p>The global fintech sector is expected to see a rebound in investment and M&A activity in 2025, driven by economic recovery and technological advancements, particularly in AI.[111] AI integration makes fintech companies attractive acquisition targets, and market consolidation is anticipated as firms seek to navigate regulatory pressures and expand their capabilities.[111] Strategic partnerships, such as those seen between payment providers and banks, e-commerce platforms, or industry-specific solution providers, will continue to be vital for expanding reach, diversifying offerings, and achieving economies of scale.[20, 51] This collaborative approach allows companies to tap into new markets and customer segments more efficiently.</p>
+                </div>
+                 <div class="card">
+                    <h3 class="text-xl font-semibold text-sky-600">Conclusion and Recommendations</h3>
+                    <p>The APAC payment solutions landscape is dynamic and highly competitive. To thrive, market participants should consider the following strategic recommendations:</p>
+                    <ol class="list-decimal list-inside space-y-2 mt-2">
+                        <li>Prioritize Seamless Cross-Border Capabilities.</li>
+                        <li>Invest Deeply in AI-Driven Automation.</li>
+                        <li>Embrace Embedded Finance Models.</li>
+                        <li>Differentiate Through Value-Added Services.</li>
+                        <li>Ensure Robust Regulatory Compliance and Cybersecurity.</li>
+                        <li>Form Strategic Partnerships.</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <section id="strategicInsights" class="content-section" style="display: none;">
+            <h2 class="text-2xl font-semibold mb-4 text-sky-700">Strategic Insights (Based on Report Analysis)</h2>
+            <p class="section-intro">This section addresses key strategic questions by synthesizing information from the provided "Competitive Landscape Analysis" report. The answers reflect the data and analyses presented within that report. For detailed competitor data, please refer to the 'Competitor Landscape' and 'Comparative Analysis' sections.</p>
+
+            <div class="space-y-6">
+                <div class="card">
+                    <h3 class="text-lg font-semibold text-sky-600">Market Positioning & Strategy Questions</h3>
+                    <div class="mt-2 space-y-3">
+                        <div>
+                            <p><strong>Competitive Differentiation: What unique value propositions distinguish the top 3 regional competitors (CardUp, iPayMy, Reap) from the rest of the market, and how sustainable are these advantages?</strong></p>
+                            <p class="text-sm text-neutral-700">The report highlights these differentiators:</p>
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>CardUp:</strong> Focuses on B2B, offering access to interest-free capital (claiming 68% cheaper than SME loans), significant automation benefits (saving man-hours), strong card rewards (up to 3% cashback/1.6 miles per dollar), and dual licensing in SG & HK. Sustainability depends on maintaining competitive reward rates, continuous automation innovation, and navigating regulatory landscapes. (See <button class="text-sky-600 underline" onclick="navigateToCompetitor('CardUp')">CardUp details</button>)</li>
+                                <li><strong>iPayMy:</strong> Hybrid model (Enterprise, SME, Individuals) enabling card payments for non-card accepting entities, offering up to 55 days interest-free working capital, and transparent international payments to 130+ countries. Sustainability relies on competitive FX, maintaining broad card acceptance solutions, and ease of use. (See <button class="text-sky-600 underline" onclick="navigateToCompetitor('iPayMy')">iPayMy details</button>)</li>
+                                <li><strong>Reap:</strong> Targets B2B (digital-led businesses, startups) with a "borderless finance" proposition potentially leveraging stablecoins, offering a single platform for corporate cards, global payments, and expense management, with developer-friendly APIs. Sustainability hinges on the adoption of its "borderless finance" solutions, API ecosystem growth, and maintaining security. (See <button class="text-sky-600 underline" onclick="navigateToCompetitor('Reap')">Reap details</button>)</li>
+                                <li>Compared to traditional banks (Citi Payall, SC EasyBill), these fintechs offer broader service ranges beyond simple bill payments, more aggressive cash flow optimization tools, and often more agile tech platforms. Global players like Airwallex or Wise compete on global network scale and specialized low-cost FX, which these regional players counter with localized expertise and specific SME-focused cash flow/rewards solutions.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p><strong>Geographic Expansion Patterns: Which competitors are successfully expanding across SG, HK, and MY markets, and what entry strategies are they using?</strong></p>
+                            <p class="text-sm text-neutral-700">Based on the report's "Primary Geographic Market" data for Regional Players:</p>
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>CardUp:</strong> Explicitly listed for Singapore, Hong Kong, Malaysia. Strategy involves obtaining local licenses (MAS & HKCED) and tailoring services for cash flow and rewards.</li>
+                                <li><strong>iPayMy:</strong> Listed for Singapore, Malaysia, Hong Kong, Australia. Strategy involves enabling card payments for non-card accepting entities and offering cross-border solutions.</li>
+                                <li><strong>Reap:</strong> Listed as "Global (Hong Kong MSO license mentioned)". While global, its HK license is key for the region. Strategy involves "borderless finance" and API-driven solutions.</li>
+                                <li>Other global fintechs like Airwallex and Nium also have strong presence and licensing across these markets, leveraging their global networks and localized payment rails. Entry strategies generally involve obtaining necessary local licenses, establishing local partnerships, and offering solutions tailored to regional business needs (e.g., multi-currency accounts, competitive FX for trade).</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p><strong>Business Model Evolution: How are competitors balancing B2B vs B2C offerings, and which segment is driving more growth?</strong></p>
+                            <p class="text-sm text-neutral-700">The report indicates a strong trend towards B2B focus, especially among fintechs.
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li>Many regional (CardUp, Reap, EzyPayment) and global fintechs (Aspire, Airwallex, Nium) primarily target B2B (SMEs, enterprises). Their value propositions (cash flow optimization, automation, cross-border B2B payments) are B2B-centric.</li>
+                                <li>Hybrid players (iPayMy, AXS, Wise, bank offerings like Citi Payall/SC EasyBill) serve both, but the report's emphasis on B2B payment digitization (Exec Summary) suggests significant growth and innovation in the B2B segment.</li>
+                                <li>The report doesn't explicitly state which segment is driving *more* growth universally, but the detailed B2B solutions and the executive summary's focus on B2B digitization imply it's a key growth area.</li>
+                            </ul>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="text-lg font-semibold text-sky-600">Product & Service Analysis Questions</h3>
+                     <div class="mt-2 space-y-3">
+                        <div>
+                            <p><strong>Feature Gap Analysis: What key features (working capital, automation, rewards, same-day payment) are table stakes vs. competitive differentiators?</strong></p>
+                            <p class="text-sm text-neutral-700">Based on the <button class="text-sky-600 underline" onclick="showSection('comparativeAnalysis'); showComparativeTable('featuresTable');">Key Features Comparison table</button>:</p>
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>Becoming Table Stakes (widely offered by leading fintechs):</strong>
+                                    <ul>
+                                        <li>Cash Flow Optimization tools (e.g., extending payables, interest-free credit periods).</li>
+                                        <li>Automation (for invoice processing, expense management, reconciliation).</li>
+                                        <li>Cross-Border Capabilities (though strength and reach vary).</li>
+                                        <li>Rewards/Benefits (especially for card-based B2B payments).</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Competitive Differentiators (where players distinguish themselves):</strong>
+                                    <ul>
+                                        <li><strong>Depth and Sophistication of Automation:</strong> AI-driven automation (Adfin, Aspire, Airwallex, Stripe, GetPaid.io) vs. basic automation.</li>
+                                        <li><strong>Strength and Speed of Cross-Border Network:</strong> Real-time settlement (Nium), proprietary networks (Wise, Airwallex), specific corridor strengths.</li>
+                                        <li><strong>Uniqueness of Rewards:</strong> Rewards on traditionally non-rewarding categories (CardUp, iPayMy, Bilt for rent), value of rewards (e.g., high cashback/miles).</li>
+                                        <li><strong>True Same-Day/Real-Time Payments:</strong> Consistency and reach of same-day/instant payment capabilities (Nium, Airwallex, Wise, Razorpay, Stripe show strength here).</li>
+                                        <li><strong>Integrated Financial OS:</strong> All-in-one platforms (Aspire, Airwallex) offering a suite beyond just payments.</li>
+                                        <li><strong>Specialized Niches:</strong> E.g., Bilt Rewards for rent, ConnexPay for integrated PayIn/PayOut.</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p><strong>Cross-Border Capabilities: Which competitors have the strongest cross-border payment infrastructure, and what corridors are they prioritizing?</strong></p>
+                            <p class="text-sm text-neutral-700">The report highlights several players with strong cross-border capabilities:</p>
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>Airwallex:</strong> Extensive global licensing (60+ countries), proprietary local payments network, 150+ countries coverage. Focus on enabling businesses to operate locally in multiple markets.</li>
+                                <li><strong>Nium/Instarem:</strong> Specializes in real-time global payments, payouts to 190+ countries, 100+ real-time markets, direct bank relationships.</li>
+                                <li><strong>Wise:</strong> Low-cost transfers to 160+ countries, own payment network bypassing SWIFT, strong in popular remittance and SME payment corridors.</li>
+                                <li><strong>Stripe:</strong> Global scale supporting 195+ countries and 135+ currencies, extensive local acquiring.</li>
+                                <li><strong>CardUp & iPayMy:</strong> Offer significant regional cross-border reach (70-190+ countries respectively), important for APAC businesses.</li>
+                                <li><strong>Corridor Prioritization:</strong> The report doesn't detail specific corridor prioritization for each player but implies a focus on major trade routes relevant to APAC businesses, and for players like Wise, common remittance corridors. Project Nexus (SG, TH, IN) indicates a focus on intra-Asia corridors.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p><strong>Expense Category Coverage: How do competitors prioritize different expense types (rent, salaries, supplier payments, taxes), and are there underserved categories?</strong></p>
+                            <p class="text-sm text-neutral-700">
+                                <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                    <li><strong>Broad Coverage (Commonly Prioritized):</strong> Many platforms like CardUp, iPayMy, SC EasyBill, and Citi Payall explicitly mention enabling card payments for expenses like:
+                                        <ul>
+                                            <li>Rent</li>
+                                            <li>Supplier Invoices / Business Expenses</li>
+                                            <li>Taxes</li>
+                                            <li>Insurance Premiums</li>
+                                            <li>School Fees / Education</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Payroll/Salaries:</strong> CardUp mentions payroll. Aspire and Razorpay (with RazorpayX Payroll) also cover this. This might be less universally covered by simpler bill payment services but is crucial for B2B platforms.</li>
+                                    <li><strong>Specialized Focus:</strong> Bilt Rewards is uniquely focused on rent and HOA payments.</li>
+                                    <li><strong>Underserved Categories:</strong> The report doesn't explicitly identify underserved categories. However, the innovation seems focused on bringing more traditional non-card expenses (large B2B invoices, payroll, taxes) onto card rails or digital platforms. Complex B2B payments with specific industry needs (e.g., construction, specialized services) might still present opportunities for more tailored solutions beyond generic bill pay.</li>
+                                </ul>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-semibold text-sky-600">Pricing & Revenue Questions</h3>
+                    <div class="mt-2 space-y-3">
+                        <div>
+                            <p><strong>Fee Structure Optimization: How do B2B vs B2C fee structures compare across competitors, and where are the pricing gaps?</strong></p>
+                            <p class="text-sm text-neutral-700">Refer to the <button class="text-sky-600 underline" onclick="showSection('comparativeAnalysis'); showComparativeTable('pricingTable');">Pricing Structures table</button>.
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>B2B Focus:</strong> Platforms like CardUp, iPayMy, Airwallex, Aspire often have transaction fees (e.g., 1.5-3.5%) for card payments, sometimes with volume discounts or promotional rates. FX fees are critical. Some (Aspire, Airwallex) have tiered/modular pricing for additional services. The value proposition is often tied to cash flow benefits or rewards that can offset these fees.</li>
+                                <li><strong>B2C/Hybrid Focus:</strong> Services like SC EasyBill or AXS Pay+Earn have direct consumer-facing fees for bill payments (e.g., 1.9-2.5%). Wise is known for transparent, low-cost B2C and B2B international transfers with mid-market rates.</li>
+                                <li><strong>Pricing Gaps/Opportunities:</strong>
+                                    <ul>
+                                    <li>Transparency is a key differentiator; complex or hidden fees are a gap. Adfin and Wise champion transparency.</li>
+                                    <li>High FX markups by traditional services present gaps for fintechs offering lower, more transparent FX rates (Wise, Airwallex).</li>
+                                    <li>The "cost per mile/point" for reward-earning B2B payments is a competitive area. If fees are too high, the rewards aren't attractive.</li>
+                                    <li>Subscription models that offer significant value (e.g., many free transactions, advanced features) for a predictable cost could be attractive to some businesses over purely per-transaction fees.</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                            </p>
+                        </div>
+                        <div>
+                            <p><strong>International Transaction Economics: What are the competitive dynamics around international transaction fees and XB corridor pricing?</strong></p>
+                            <p class="text-sm text-neutral-700">
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>Key Competitive Factors:</strong>
+                                    <ul>
+                                    <li><strong>FX Rates:</strong> Offering mid-market or very low-markup FX rates is a major battleground (Wise, Airwallex).</li>
+                                    <li><strong>Transfer Fees:</strong> Flat fees vs. percentage-based, and the overall cost.</li>
+                                    <li><strong>Speed & Transparency:</strong> Real-time or near real-time transfers and clear upfront fee disclosure.</li>
+                                    <li><strong>Network Reach:</strong> Number of countries and currencies supported, and whether local payment rails are used to reduce costs (Airwallex, Nium, Wise).</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Dynamics:</strong>
+                                    <ul>
+                                    <li>Fintechs are aggressively challenging traditional bank pricing on international transactions.</li>
+                                    <li>Players with their own payment networks (Wise) or extensive local payment partnerships (Airwallex, Nium) can often offer better pricing and speed than those relying heavily on correspondent banking/SWIFT.</li>
+                                    <li>Razorpay's entry into SEA aims to reduce cross-border fees by 30-40%, indicating ongoing pressure on pricing.</li>
+                                    <li>The report suggests a demand for cost-effective solutions, especially for SMEs involved in cross-border trade.</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                            </p>
+                        </div>
+                        <div>
+                            <p><strong>Revenue Stream Diversification: Which competitors are successfully monetizing beyond transaction fees (through working capital, rewards, etc.)?</strong></p>
+                            <p class="text-sm text-neutral-700">
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li>While transaction fees are primary, diversification is evident:
+                                    <ul>
+                                    <li><strong>Working Capital Solutions:</strong> Platforms enabling extended payment terms or access to credit (CardUp, iPayMy, Melio's "Pay over time", Razorpay's credit lines) likely earn revenue from these financing aspects, either directly or through partnerships. Aspire offers 'Yield' products.</li>
+                                    <li><strong>Value-Added Services/SaaS Fees:</strong> Platforms offering comprehensive financial OS (Aspire, Airwallex) or advanced automation/analytics features (GetPaid.io, FIS GETPAID) may charge subscription fees or tiered pricing for these premium services. Aspire charges for additional users/cards. Stripe Connect has per-user/volume fees.</li>
+                                    <li><strong>Rewards Programs (Indirect Monetization):</strong> While users earn rewards, platforms might benefit from interchange fees (Stripe) or increased transaction volume driven by rewards. Bilt Rewards has a unique model built around rent rewards, likely monetizing through partnerships with property managers and financial institutions.</li>
+                                    <li><strong>FX Services:</strong> Markup on FX transactions is a significant revenue stream for cross-border players.</li>
+                                    <li><strong>Card Issuance:</strong> Companies issuing corporate cards (Aspire, Airwallex, Reap, Stripe) can earn from interchange fees. ConnexPay highlights boosting card rebates for clients, implying a revenue share or benefit from optimizing these.</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3 class="text-lg font-semibold text-sky-600">Technology & Operations Questions</h3>
+                     <div class="mt-2 space-y-3">
+                        <div>
+                            <p><strong>Automation Capabilities: How advanced are competitors' digitization and automation features, and what's the next frontier?</strong></p>
+                            <p class="text-sm text-neutral-700">Refer to <button class="text-sky-600 underline" onclick="showSection('comparativeAnalysis'); showComparativeTable('techTable');">Technology & Integration table</button> and Section 5.1.
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>Current Advanced Capabilities:</strong>
+                                    <ul>
+                                    <li>End-to-end workflow automation for invoice-to-cash (Adfin, GetPaid.io, Melio).</li>
+                                    <li>AI/ML for invoice parsing, data extraction, and intelligent chasing (Adfin).</li>
+                                    <li>AI-powered AR and collections management, including predictive delinquency (FIS GETPAID, GetPaid.io).</li>
+                                    <li>Automated expense tracking, categorization, and policy enforcement via smart corporate cards (Aspire, Airwallex).</li>
+                                    <li>AI-driven fraud prevention and risk management (Stripe Radar, ConnexPay).</li>
+                                    <li>Automated reconciliation and accounting software integration is common.</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Next Frontier (as suggested by report trends):</strong>
+                                    <ul>
+                                    <li>Deeper AI integration for more predictive analytics, hyper-personalization, and proactive financial advice.</li>
+                                    <li>Greater use of AI in compliance and regulatory reporting.</li>
+                                    <li>More sophisticated automation for complex B2B workflows and multi-party transactions.</li>
+                                    <li>Automation leveraging data from embedded finance solutions for richer insights and services.</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                            </p>
+                        </div>
+                        <div>
+                            <p><strong>Payment Method Coverage: Which competitors have the most comprehensive card acceptance (Visa, MC, Amex) and alternative payment options?</strong></p>
+                            <p class="text-sm text-neutral-700">Refer to Section 5.2 and the <button class="text-sky-600 underline" onclick="showSection('comparativeAnalysis'); showComparativeTable('techTable');">Technology & Integration table</button>.
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>Comprehensive Card Acceptance (Visa, MC, Amex):</strong> Most major players like CardUp, iPayMy, Airwallex, Stripe, Razorpay support these.</li>
+                                <li><strong>Broad Alternative Payment Options:</strong>
+                                    <ul>
+                                    <li><strong>Airwallex:</strong> 160+ local payment methods globally, digital wallets (Apple Pay, Google Pay).</li>
+                                    <li><strong>Stripe:</strong> 100+ payment methods including PayPal, Cash App Pay, bank redirects, BNPL (Klarna, Afterpay).</li>
+                                    <li><strong>Razorpay:</strong> 100+ payment methods including net banking, UPI, mobile wallets.</li>
+                                    <li>Regional players also integrate local methods like PayNow (CardUp, AXS).</li>
+                                    </ul>
+                                </li>
+                                <li>The trend is towards supporting a wide array of local and international payment methods to cater to diverse customer preferences and improve conversion.</li>
+                            </ul>
+                            </p>
+                        </div>
+                        <div>
+                            <p><strong>Integration Partnerships: What strategic partnerships are competitors leveraging for enhanced service delivery?</strong></p>
+                            <p class="text-sm text-neutral-700">Refer to Section 5.2 and the <button class="text-sky-600 underline" onclick="showSection('comparativeAnalysis'); showComparativeTable('techTable');">Technology & Integration table</button>.
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>Accounting Software:</strong> Very common (Xero, QuickBooks, MYOB, NetSuite) across many B2B platforms (CardUp, Aspire, Airwallex, Melio, EzyPayment, Stripe) for seamless data flow and reconciliation.</li>
+                                <li><strong>E-commerce Platforms:</strong> Airwallex, Stripe integrate with Shopify, WooCommerce, Magento.</li>
+                                <li><strong>Banks & Financial Institutions:</strong> Aspire partners with Citibank, JPMorgan, Visa. Nium partners with various banks globally to expand its network.</li>
+                                <li><strong>Industry-Specific Platforms:</strong> ConnexPay with StoneEagle (automotive). Nium with travel platforms.</li>
+                                <li><strong>Technology Providers:</strong> ConnexPay with Kount (fraud), Mastercard, Visa. Bilt with dbt Labs. Razorpay with AWS, Snowflake.</li>
+                                <li><strong>Embedded Finance Partnerships:</strong> Melio partners with Gusto, Amazon Business, Fiserv, Shopify to embed its AP/AR solutions.</li>
+                                <li>These partnerships are crucial for expanding reach, enhancing functionality, and providing more integrated solutions.</li>
+                            </ul>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                 <div class="card">
+                    <h3 class="text-lg font-semibold text-sky-600">Customer & Market Questions</h3>
+                     <div class="mt-2 space-y-3">
+                        <div>
+                            <p><strong>Customer Acquisition Strategies: How do referral programs and customer acquisition costs compare across the competitive set?</strong></p>
+                            <p class="text-sm text-neutral-700">The report details several customer acquisition strategies (Section 3.2) but does not provide specific comparative data on referral program effectiveness or customer acquisition costs (CAC) across the set.
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>Common Strategies Mentioned:</strong>
+                                    <ul>
+                                    <li>Value-driven offers (promotional fees, direct financial benefits - CardUp, iPayMy, Citi PayAll).</li>
+                                    <li>Partnerships and Integrations (Aspire, Airwallex, Melio, EzyPayment, Stripe).</li>
+                                    <li>Digital-first approach (Aspire, Wise, AXS Checkout).</li>
+                                    <li>Market localization (Airwallex, Nium).</li>
+                                    </ul>
+                                </li>
+                                <li>While referral programs are a common fintech tactic, their specific details and comparative success rates aren't covered in this report. CAC is also not quantified.</li>
+                            </ul>
+                            </p>
+                        </div>
+                        <div>
+                            <p><strong>Target Market Focus: Are competitors primarily targeting SMEs, enterprises, or consumers, and how is this affecting their product development?</strong></p>
+                            <p class="text-sm text-neutral-700">Section 3.2 outlines target markets.
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>SMEs & Businesses:</strong> Strong focus from CardUp, iPayMy (also enterprises), EzyPayment, Aspire (startups, SMEs, mid-sized), Melio (small businesses), Adfin (small businesses). Product development emphasizes cash flow optimization, automation for smaller teams, ease of use, and access to credit/rewards typically available to larger firms.</li>
+                                <li><strong>Global Businesses/Platforms:</strong> Airwallex, Nium, Stripe cater to businesses with global operations, marketplaces, and platforms. Product development focuses on robust APIs, multi-currency support, global payment networks, scalability, and embedded finance solutions.</li>
+                                <li><strong>Individuals/Hybrid:</strong> AXS (consumer bill pay), SC EasyBill/Citi Payall (bank cardholders), Wise (personal & business international transfers), Bilt Rewards (renters). Product development prioritizes ease of use via mobile apps, specific consumer pain points (e.g., earning rewards on rent), and low-cost services for individuals.</li>
+                                <li>The target market directly shapes features: B2B solutions need robust AP/AR, expense management, and multi-user access, while B2C might focus more on individual transaction ease and reward accumulation.</li>
+                            </ul>
+                            </p>
+                        </div>
+                        <div>
+                            <p><strong>Regulatory Adaptation: How are competitors navigating different regulatory environments across SG, HK, and MY?</strong></p>
+                            <p class="text-sm text-neutral-700">Section 6 (Future Trends) touches on regulatory adaptation.
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>Key Strategies:</strong>
+                                    <ul>
+                                    <li><strong>Obtaining Local Licenses:</strong> Crucial for operation. CardUp (MAS & HKCED), iPayMy (MAS), Aspire (MAS), EzyPayment (MAS MPI), Reap (HK MSO). Airwallex and Nium highlight their extensive global licensing, including in key APAC markets.</li>
+                                    <li><strong>Investing in Compliance Infrastructure:</strong> To meet AML, fraud prevention, and data protection requirements.</li>
+                                    <li><strong>AI/ML for Monitoring:</strong> Regulators and firms are using AI/ML for risk-based controls and compliance.</li>
+                                    <li><strong>Market Localization:</strong> Adapting products and operations to specific local regulations (e.g., Airwallex, Nium).</li>
+                                    </ul>
+                                </li>
+                                <li>The report emphasizes that robust compliance is becoming a competitive differentiator, not just an operational need. Navigating diverse regulations requires significant investment and expertise.</li>
+                            </ul>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                 <div class="card">
+                    <h3 class="text-lg font-semibold text-sky-600">Future-Looking Strategic Questions</h3>
+                     <div class="mt-2 space-y-3">
+                        <div>
+                            <p><strong>Emerging Threats: Which new entrants or adjacent players pose the biggest competitive threat?</strong></p>
+                            <p class="text-sm text-neutral-700">The report (Section 6) doesn't explicitly name specific new entrants but implies threats from:
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>Players rapidly adopting advanced AI:</strong> Those who can leverage AI for superior efficiency, personalization, or fraud detection could disrupt established players.</li>
+                                <li><strong>Innovators in embedded finance:</strong> Non-financial platforms integrating financial services could capture market share by offering seamless experiences.</li>
+                                <li><strong>Companies excelling in cross-border solutions:</strong> Especially those leveraging new technologies like blockchain or CBDCs effectively.</li>
+                                <li><strong>Consolidators:</strong> Larger players acquiring innovative fintechs could reshape the competitive landscape.</li>
+                                <li>Adjacent players could include large tech companies with payment ambitions or specialized SaaS providers expanding into financial services.</li>
+                            </ul>
+                            </p>
+                        </div>
+                        <div>
+                            <p><strong>Technology Disruption: How are competitors preparing for changes in payment rails, digital currencies, or embedded finance?</strong></p>
+                            <p class="text-sm text-neutral-700">Section 6 highlights preparations:
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>Payment Rails:</strong> Active participation/monitoring of initiatives like Project Nexus (linking real-time payment systems). Investing in direct bank relationships and local payment method integrations (Airwallex, Nium, Wise).</li>
+                                <li><strong>Digital Currencies (CBDCs, Stablecoins):</strong> Pilot programs are underway (HK, SG). Reap mentions "stablecoin-powered" borderless finance. The potential to redefine speed, cost, and accessibility of cross-border payments is recognized.</li>
+                                <li><strong>Embedded Finance:</strong> This is seen as a strategic growth model. Players like Airwallex and Aspire offer APIs to facilitate embedded finance. Melio's partnerships are a form of embedding its services. The trend is towards creating integrated financial ecosystems.</li>
+                                <li>General preparation involves investing in agile technology, robust APIs, and staying abreast of regulatory developments surrounding these new technologies.</li>
+                            </ul>
+                            </p>
+                        </div>
+                        <div>
+                            <p><strong>Market Consolidation: Which competitors are likely acquisition targets or acquirers, and how might this reshape the landscape?</strong></p>
+                            <p class="text-sm text-neutral-700">Section 6 suggests:
+                            <ul class="list-disc list-inside text-sm text-neutral-600 ml-4">
+                                <li><strong>Acquisition Targets:</strong> Fintech companies with strong AI integration, unique technologies, or niche market positions could be attractive targets. Specialized solution providers might be targets for larger platforms looking to add capabilities.</li>
+                                <li><strong>Acquirers:</strong> Larger, well-funded global players (processors, large fintechs, traditional banks seeking to modernize) could be acquirers. Companies looking to quickly expand geographic reach or service offerings.</li>
+                                <li><strong>Reshaping the Landscape:</strong> Consolidation can lead to:
+                                    <ul>
+                                    <li>Fewer, larger players with more comprehensive offerings.</li>
+                                    <li>Increased competition among the remaining large players.</li>
+                                    <li>Potential for innovation to be stifled or accelerated depending on the acquirer's strategy.</li>
+                                    <li>Faster adoption of new technologies if acquired by entities with greater resources.</li>
+                                    </ul>
+                                </li>
+                                <li>The report anticipates a rebound in M&A in 2025, driven by economic recovery and AI advancements.</li>
+                            </ul>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="text-center p-4 text-sm text-neutral-600 border-t border-neutral-300 mt-8">
+        Interactive Report generated from "Competitive Landscape Analysis: Asia-Pacific Payment Solutions".
+    </footer>
+
+    <script>
+        const sections = ['overview', 'competitorLandscape', 'comparativeAnalysis', 'marketTrends', 'strategicInsights'];
+        const navButtons = document.querySelectorAll('#mainNav button.nav-button');
+        let currentCompetitorFilter = 'all';
+        let currentComparativeTable = 'featuresTable';
+
+        const competitorData = {
+            regional: [
+                { name: "CardUp", category: "regional", summary: "B2B (SMEs, businesses of all sizes). Payables, Receivables, Cross-border, Cash Flow Optimization, Rewards. Differentiators: Access to interest-free capital, Automation, Card rewards, MAS & HKCED licensed. Markets: Singapore, Hong Kong, Malaysia.", details: { valueProposition: "Access to interest-free capital (68% cheaper than SME loans), cash flow optimization, earn credit card rewards on non-card accepting payments, automation, transparent pricing.", b2cFocus: "B2B", countries: "Singapore, Hong Kong, Malaysia" } },
+                { name: "iPayMy", category: "regional", summary: "Hybrid (Enterprises, SMEs, Individuals). Payables, Receivables (Fetch), Cross-border, Cash Flow Optimization, Rewards. Differentiators: Credit card payments for non-card accepting entities, Interest-free working capital, Transparent international payments. Markets: Singapore, Malaysia, Hong Kong, Australia.", details: { valueProposition: "Enable credit card payments for non-card accepting entities, cash flow optimization, unlock rewards, transparent international payments, easy payment collection.", b2cFocus: "Hybrid (Enterprise, SME, Individual)", countries: "Singapore, Malaysia, Hong Kong, Australia" } },
+                { name: "Reap", category: "regional", summary: "B2B (digital-led businesses, startups). Corporate credit cards, Global payment solutions, Expense Management, API solutions. Differentiators: Borderless finance (stablecoin-powered), Single platform, Security, Developer-friendly APIs. Markets: Global (Hong Kong MSO license mentioned).", details: { valueProposition: "Borderless finance (stablecoin-powered), single platform for corporate credit cards, global payments, expense management, security, developer-friendly APIs.", b2cFocus: "B2B", countries: "Global (Hong Kong MSO license)" } },
+                { name: "AXS Pay+Earn / AXS Checkout", category: "regional", summary: "Hybrid (B2C primary for Pay+Earn, B2B for Checkout). Bill payments, E-services, Payment Gateway (Checkout), Rewards. Differentiators: Deep consumer integration in Singapore, Local market expertise, Real-time transaction data/reports. Markets: Singapore.", details: { valueProposition: "Deep consumer integration for bill payments, local market expertise, transparent pricing, real-time transaction data, support for major cards.", b2cFocus: "Hybrid (B2C primary, B2B for Checkout)", countries: "Singapore" } },
+                { name: "EzyPayment (SGeBiz)", category: "regional", summary: "B2B. Payables, Receivables, Cross-border, Procurement (Order, Inventory, Recipe Mgmt), BNPL. Differentiators: Extend cash outflow up to 60 days, Maximize card rewards, Financial insights dashboard, MAS licensed MPI, Same-day payments. Markets: Singapore (Global payments available).", details: { valueProposition: "Extend cash outflow up to 60 days, maximize card rewards, integrated procurement solutions, financial insights dashboard, same-day payments.", b2cFocus: "B2B", countries: "Singapore (Global payments available)" } },
+                { name: "Citi Payall", category: "regional", summary: "Hybrid (Existing Citi cardholders). Bill payments (Insurance, rent, tax, education, etc.), Rewards. Differentiators: Earn credit card points/miles on non-rewarding categories, Mobile app access. Markets: Hong Kong (and other Citi markets).", details: { valueProposition: "Earn credit card points/miles on non-rewarding categories (insurance, rent, tax), maximize cash flow.", b2cFocus: "Hybrid (Existing Citi cardholders, individuals/businesses)", countries: "Hong Kong (and other Citi markets)" } },
+                { name: "SC EasyBill (Standard Chartered)", category: "regional", summary: "Hybrid (Standard Chartered cardholders). Bill payments (Tax, Rent, Insurance, Education), Rewards. Differentiators: Leverage existing bank customer base, Cash flow deferral. Markets: Singapore (Domestic payments only).", details: { valueProposition: "Earn rewards on specific recurring expenses (taxes, rent, insurance, education) using credit cards, cash flow deferral.", b2cFocus: "Hybrid (Standard Chartered cardholders)", countries: "Singapore (domestic payments only)" } }
+            ],
+            globalFintech: [
+                { name: "Aspire", category: "globalFintech", summary: "B2B (Startups, SMEs, Mid-sized). Multi-currency accounts, Corporate cards, Global payments, Expense management, Accounting automation, Yield. Differentiators: All-in-one financial OS, AI-powered finance, Unlimited cashback (1% on Ads/SaaS). Markets: Southeast Asia (Singapore, Vietnam, Indonesia).", details: { valueProposition: "All-in-one financial operating system, AI-powered finance, unlimited cashback, competitive FX rates, perks & rewards, accounting automation.", b2cFocus: "B2B", countries: "Southeast Asia (Singapore, Vietnam, Indonesia)" } },
+                { name: "Airwallex", category: "globalFintech", summary: "B2B (Modern businesses with global financial needs). Multi-currency business accounts, FX & transfers, Corporate cards, Expense management, Bill pay, Payment acceptance, Embedded finance APIs. Differentiators: Unified platform, Global local payments network (60+ licenses). Markets: Global (APAC, Americas, EMEA).", details: { valueProposition: "Unified global payments and financial platform, cost & time savings, automated workflows, proprietary local payments network, AI-powered spend management, embedded finance APIs.", b2cFocus: "B2B", countries: "Global (APAC, Americas, EMEA, including SG, HK, AU, MY, NZ, CN, JP, BR, MX)" } },
+                { name: "Nium/Instarem", category: "globalFintech", summary: "B2B (Financial Institutions, Platforms & Enterprises, Travel). Multi-currency accounts, Global card issuance, Global payouts (190+ countries), Global FX. Differentiators: Real-time global payments infrastructure, Extensive global network (100+ real-time markets). Markets: Global.", details: { valueProposition: "Real-time global payments infrastructure, instant collection/conversion/disbursement, extensive global network, transparent FX, instant account verification.", b2cFocus: "B2B (pivoted from B2C)", countries: "Global (APAC, LATAM, EMEA, North America, including SG, AU, HK, MY, UK, US, JP, ID, NZ, CA, LT)" } },
+                { name: "Wise", category: "globalFintech", summary: "Hybrid (Personal & Business, SMEs). Low-cost international money transfers, Multi-currency accounts, Debit cards. Differentiators: Transparent pricing (mid-market exchange rate), Own payment network, Fast transfers. Markets: Global (APAC hub in Singapore).", details: { valueProposition: "Low-cost international money transfers, transparent pricing (mid-market rate), multi-currency accounts, own payment network, fast transfers, global reach.", b2cFocus: "Hybrid (Personal & Business)", countries: "Global (160+ countries, 40+ currencies, APAC hub in SG)" } }
+            ],
+            globalProcessors: [
+                { name: "Razorpay", category: "globalProcessors", summary: "B2B (Businesses of all sizes, startups). Payment Gateway, Payouts (RazorpayX), Business Banking, Payroll, Credit & Loans. Differentiators: Seamless & secure payment experience, 100+ payment methods, AI-driven solutions. Markets: India (expanding to Southeast Asia, Singapore).", details: { valueProposition: "Seamless & secure payment experience, 100+ payment methods, easy integration, AI-driven solutions, cost reduction on cross-border payments, developer-friendly.", b2cFocus: "B2B (also D2C/B2C via Rize)", countries: "India (expanding to Southeast Asia, Singapore)" } },
+                { name: "Stripe", category: "globalProcessors", summary: "B2B (Startups to Enterprises). Global Payments, Money Management, Revenue & Finance Automation. Differentiators: Fully integrated AI-powered platform, Global scale (195+ countries), Developer-centric design. Markets: Global.", details: { valueProposition: "Fully integrated, AI-powered platform, global scale, developer-centric design, low/no-code options, fraud prevention.", b2cFocus: "B2B (predominantly)", countries: "Global (195+ countries)" } }
+            ],
+            specialized: [
+                { name: "Bilt Rewards", category: "specialized", summary: "B2C (Renters). Earn rewards on rent/HOA payments. Differentiators: First to offer rewards on rent, Flexible redemption options. Markets: United States.", details: { valueProposition: "Earn rewards on rent/HOA payments (traditionally ineligible), flexible redemption (travel, future rent, home down payments, student loans), neighborhood benefits.", b2cFocus: "B2C", countries: "United States" } },
+                { name: "Melio", category: "specialized", summary: "B2B (Small businesses). Accounts Payable, Accounts Receivable, International payments. Differentiators: Simplicity & ease of use, \"Pay over time\" feature. Markets: Primarily US.", details: { valueProposition: "Simplify & automate B2B payments/receivables, \"Pay over time\" feature, fast payments, seamless accounting software integration, security.", b2cFocus: "B2B", countries: "Primarily US (expanding international payments to 15 currencies)" } },
+                { name: "Adfin", category: "specialized", summary: "B2B (Small businesses, sole traders). Automated invoice sending, chasing, reconciling; Payment collection. Differentiators: Automates entire invoice-to-cash process, AI engine for intelligent chasing. Markets: UK-based.", details: { valueProposition: "Automate entire invoice-to-cash process, faster & lower cost payments, \"one fair price\", all \"money in\" in one place, AI engine for intelligent chasing.", b2cFocus: "B2B", countries: "UK-based" } },
+                { name: "ConnexPay", category: "specialized", summary: "B2B (Travel, Insurance, Online Advertising, etc.). PayIn & Pay Out, Fraud Prevention. Differentiators: Single integration for acceptance & issuance, \"Intelligent PayOuts\" (card rebates). Markets: Global.", details: { valueProposition: "Single integration for payments acceptance & issuance, \"Intelligent PayOuts\" (card rebates), real-time processing, enhanced cash flow, AI-driven fraud prevention.", b2cFocus: "B2B", countries: "Global (clients on six continents, 150+ currencies)" } },
+                { name: "GetPaid.io / FIS GETPAID", category: "specialized", summary: "B2B (Modern CFOs, B2B marketplaces). Accounts Receivable (AR) Automation, Invoicing, B2B Payments. Differentiators: 5X faster quote-to-cash, AI-powered analytics. Markets: Global.", details: { valueProposition: "AR automation (5X faster quote-to-cash), low-code integration, no integration costs, AI-powered analytics, flexible payment methods.", b2cFocus: "B2B (also B2C marketplaces)", countries: "Global (Headquarters in Spain, offices in Germany, Italy)" } }
+            ]
+        };
+        
+        const allCompetitorsFlat = Object.values(competitorData).flat();
+
+        function showSection(sectionId) {
+            sections.forEach(id => {
+                document.getElementById(id).style.display = (id === sectionId) ? 'block' : 'none';
+            });
+            navButtons.forEach(button => {
+                button.classList.remove('active');
+                if (button.textContent.toLowerCase().includes(sectionId.replace('Landscape', ' landscape').replace('Analysis', ' analysis').toLowerCase().split(' ')[0])) {
+                    if (sectionId === 'competitorLandscape' && button.textContent.includes('Competitor Landscape')) {
+                         button.classList.add('active');
+                    } else if (sectionId === 'comparativeAnalysis' && button.textContent.includes('Comparative Analysis')) {
+                         button.classList.add('active');
+                    } else if (!button.textContent.includes('Competitor Landscape') && !button.textContent.includes('Comparative Analysis')) {
+                        button.classList.add('active');
+                    }
+                }
+            });
+
+            if (sectionId === 'competitorLandscape') {
+                renderCompetitors(currentCompetitorFilter);
+            } else if (sectionId === 'comparativeAnalysis') {
+                showComparativeTable(currentComparativeTable);
+            }
+        }
+        
+        function navigateToCompetitor(competitorName) {
+            showSection('competitorLandscape');
+            filterCompetitors('all', 'competitorLandscape', competitorName);
+        }
+
+        function filterCompetitors(category, sectionId, highlightCompetitorName = null) {
+            currentCompetitorFilter = category;
+            if (sectionId) showSection(sectionId);
+            renderCompetitors(category, highlightCompetitorName);
+
+            const dropdownButton = document.querySelector('#mainNav .dropdown button[onclick*="competitorLandscape"]');
+            if (dropdownButton) {
+                 navButtons.forEach(btn => btn.classList.remove('active'));
+                 dropdownButton.classList.add('active');
+            }
+        }
+
+        function renderCompetitors(category, highlightCompetitorName = null) {
+            const grid = document.getElementById('competitorGrid');
+            grid.innerHTML = '';
+            let competitorsToDisplay = [];
+            if (category === 'all') {
+                competitorsToDisplay = Object.values(competitorData).flat();
+            } else {
+                competitorsToDisplay = competitorData[category] || [];
+            }
+
+            competitorsToDisplay.forEach(comp => {
+                const card = document.createElement('div');
+                card.className = 'card competitor-card';
+                card.dataset.category = comp.category;
+                card.innerHTML = `
+                    <h3 class="cursor-pointer hover:text-sky-500" onclick="toggleCompetitorDetails(this)">${comp.name}</h3>
+                    <p class="text-sm text-neutral-600">${comp.summary}</p>
+                    <div class="expandable-content">
+                        <p><strong>Value Proposition:</strong> ${comp.details.valueProposition}</p>
+                        <p><strong>Primary B2B/B2C Focus:</strong> ${comp.details.b2cFocus}</p>
+                        <p><strong>Countries Involved:</strong> ${comp.details.countries}</p>
+                        <button class="mt-4 px-3 py-1 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition-colors" onclick="generateSwotAnalysis(this, '${comp.name}', '${comp.details.valueProposition.replace(/'/g, "\\'")}', '${comp.details.b2cFocus.replace(/'/g, "\\'")}', '${comp.details.countries.replace(/'/g, "\\'")}')">
+                            ✨ Generate SWOT Analysis
+                        </button>
+                        <div class="swot-analysis-container mt-4" style="display:none;">
+                            <div class="loading-spinner"></div> Loading SWOT...
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+                if (highlightCompetitorName && comp.name === highlightCompetitorName) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.style.border = '2px solid #0ea5e9'; // Highlight border
+                    setTimeout(() => card.style.border = '', 3000); // Remove highlight after 3s
+                    const detailsContent = card.querySelector('.expandable-content');
+                    if (detailsContent) detailsContent.style.display = 'block';
+                }
+            });
+        }
+        
+        function toggleCompetitorDetails(element) {
+            const content = element.nextElementSibling.nextElementSibling; // Summary is next, then expandable content
+            if (content) {
+                content.style.display = content.style.display === 'block' ? 'none' : 'block';
+            }
+        }
+
+        async function generateSwotAnalysis(button, name, valueProposition, b2cFocus, countries) {
+            const swotContainer = button.nextElementSibling;
+            swotContainer.style.display = 'block';
+            swotContainer.innerHTML = '<div class="loading-spinner"></div> Generating SWOT analysis...';
+
+            const prompt = `Based on the following information about ${name}:
+            Value Proposition: ${valueProposition}
+            Primary B2B/B2C Focus: ${b2cFocus}
+            Countries Involved: ${countries}
+
+            Please provide a concise SWOT analysis (Strengths, Weaknesses, Opportunities, Threats) for ${name} in the context of the APAC payment solutions market. Focus on insights derivable directly from the provided information.
+            Format the response as a JSON object with four keys: 'Strengths', 'Weaknesses', 'Opportunities', 'Threats', where each value is an array of strings.`;
+
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+
+            const payload = {
+                contents: chatHistory,
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "Strengths": { "type": "ARRAY", "items": { "type": "STRING" } },
+                            "Weaknesses": { "type": "ARRAY", "items": { "type": "STRING" } },
+                            "Opportunities": { "type": "ARRAY", "items": { "type": "STRING" } },
+                            "Threats": { "type": "ARRAY", "items": { "type": "STRING" } }
+                        },
+                        "propertyOrdering": ["Strengths", "Weaknesses", "Opportunities", "Threats"]
+                    }
+                }
+            };
+
+            const apiKey = ""; // If you want to use models other than gemini-2.0-flash or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const json = result.candidates[0].content.parts[0].text;
+                    const swot = JSON.parse(json);
+                    
+                    let swotHtml = '<div class="swot-section">';
+                    swotHtml += '<h4>Strengths</h4><ul>';
+                    swot.Strengths.forEach(s => swotHtml += `<li>${s}</li>`);
+                    swotHtml += '</ul>';
+
+                    swotHtml += '<h4>Weaknesses</h4><ul>';
+                    swot.Weaknesses.forEach(w => swotHtml += `<li>${w}</li>`);
+                    swotHtml += '</ul>';
+
+                    swotHtml += '<h4>Opportunities</h4><ul>';
+                    swot.Opportunities.forEach(o => swotHtml += `<li>${o}</li>`);
+                    swotHtml += '</ul>';
+
+                    swotHtml += '<h4>Threats</h4><ul>';
+                    swot.Threats.forEach(t => swotHtml += `<li>${t}</li>`);
+                    swotHtml += '</ul></div>';
+
+                    swotContainer.innerHTML = swotHtml;
+
+                } else {
+                    swotContainer.innerHTML = '<p class="text-red-500">Error: Could not generate SWOT analysis. Please try again.</p>';
+                }
+            } catch (error) {
+                console.error('Error generating SWOT analysis:', error);
+                swotContainer.innerHTML = `<p class="text-red-500">Error: Failed to fetch SWOT analysis. ${error.message}</p>`;
+            }
+        }
+
+        const comparativeTablesData = {
+            featuresTable: {
+                headers: ["Company", "Cash Flow Optimization", "Automation", "Rewards/Benefits", "Cross-Border Capabilities", "Same-Day Payment"],
+                data: [
+                    ["CardUp", "Yes", "Yes", "Yes", "Yes", "Yes (1 biz day)"],
+                    ["iPayMy", "Yes", "Yes", "Yes", "Yes", "Yes (next biz day)"],
+                    ["Reap", "Yes", "Yes", "Not explicit", "Yes", "Yes"],
+                    ["AXS Pay+Earn / AXS Checkout", "Yes", "Yes", "Yes (B2C)", "Yes", "Faster trans."],
+                    ["EzyPayment (SGeBiz)", "Yes", "Yes", "Yes", "Yes", "Yes (15 min)"],
+                    ["Citi Payall", "Yes", "Scheduling", "Yes", "Yes", "Instant charge"],
+                    ["SC EasyBill", "Yes", "No explicit", "Yes", "No", "Up to 7 days"],
+                    ["Aspire", "Yes", "Yes (AI)", "Yes", "Yes", "Yes"],
+                    ["Airwallex", "Yes", "Yes (AI)", "Yes", "Yes", "Yes (real-time)"],
+                    ["Nium/Instarem", "Yes", "Yes", "No explicit", "Yes", "Yes (real-time)"],
+                    ["Wise", "Yes", "Yes", "Interest", "Yes", "Yes (60%+ instant)"],
+                    ["Razorpay", "Yes", "Yes (AI)", "No explicit", "Yes", "Yes (instant)"],
+                    ["Stripe", "Yes", "Yes (AI)", "Interchange", "Yes", "Yes (instant)"],
+                    ["Bilt Rewards", "Yes (credit)", "Data modeling", "Yes", "No explicit", "No explicit"],
+                    ["Melio", "Yes", "Yes", "No explicit", "Yes", "Yes (instant)"],
+                    ["Adfin", "Yes", "Yes (AI)", "No explicit", "No explicit", "No explicit"],
+                    ["ConnexPay", "Yes", "Yes (AI)", "Yes (rebates)", "Yes", "Yes (real-time)"],
+                    ["GetPaid.io / FIS GETPAID", "Yes", "Yes (AI)", "No explicit", "Yes", "No explicit"]
+                ]
+            },
+            pricingTable: {
+                headers: ["Company", "Domestic Card Fee (Typical)", "International Card Fee (Typical)", "FX Fee (Typical)", "Other Key Fees/Notes"],
+                data: [
+                    ["CardUp", "2.6% (promo 1.55-2%)", "3.3%", "Transparent fees", "PayNow: Free; Min. S$3.40"],
+                    ["iPayMy", "2.4% (SG), 2.25% (MY)", "3.3%", "Competitive", "Recurring: 1.75-1.85%; S$1 Safeguard"],
+                    ["Reap", "1.8% (bank transfer w/ Reap Card)", "25 USD (XB payment)", "2% (Reap Card FX)", "Card: Free; ATM: 2%"],
+                    ["AXS Checkout", "2.8% + S$0.50", "3.5% + S$0.50", "N/A (SGD)", "PayNow: 1.0%; Pay+Earn: 2-2.5%"],
+                    ["EzyPayment", "1.39-1.79% + cents", "Transparent XB", "No hidden FX", "Amex: higher; Setup/Failed fees"],
+                    ["Citi Payall", "Service fee", "Service fee", "Citi FX rates", "HK$200 redemption; Caps"],
+                    ["SC EasyBill", "Up to 1.9%", "N/A", "N/A", "Non-refundable; Varies by type"],
+                    ["Aspire", "No local transfer fee", "$15 SWIFT (SHA)", "0.4-0.7% send/receive; 1.5% card FX", "$0/mo base; User/Card fees"],
+                    ["Airwallex", "1.65% + $0.30", "3.40% + $0.30", "0.5% above interbank", "Monthly plans; SWIFT fees"],
+                    ["Nium/Instarem", "No open fee", "No XB transfer fee (bank may charge)", "Transparent FX", "Varies by country/method"],
+                    ["Wise", "From 0.33%", "From 0.33%", "Mid-market rate", "Account setup: £45; ATM fees"],
+                    ["Razorpay", "2% + GST", "3% + taxes", "Aims to reduce XB fees", "No setup/annual fees"],
+                    ["Stripe", "2.9% + 30¢", "+1.5% (Intl card)", "+1% (conversion)", "Connect: $2/user or 0.25% volume"],
+                    ["Bilt Rewards", "No annual fee", "N/A", "N/A", "Revenue from network model"],
+                    ["Melio", "$0.50 ACH, $1.5 check", "$20 ACH USD, 2.9% + $20 card USD", "Conversion rates apply", "Subscriptions; Card: 2.9%"],
+                    ["Adfin", "1-1.5% + 20p", "Premium cards: 2-3%", "Not explicit", "No monthly; Bank/DD capped; Chargeback fee"],
+                    ["ConnexPay", "Lower merchant fees", "Minimize/Eliminate XB/FX", "Eliminate XB/FX", "Card rebates; No virtual card fee"],
+                    ["GetPaid.io", "Not explicit", "Not explicit", "Not explicit", "Savings on license fees; No user-based price"]
+                ]
+            },
+            techTable: {
+                headers: ["Company", "Key Automation Features", "Major Payment Methods Supported", "Key Integration Partners"],
+                data: [
+                    ["CardUp", "Invoice digitize, Auto pay/reminders", "Cards (Visa, MC, Amex, UnionPay), PayNow", "Xero, SAP Concur"],
+                    ["iPayMy", "Auto invoice processing (Capture)", "Cards, Digital currencies (BTC, ETH etc.)", "Not explicit"],
+                    ["Reap", "Expense mgmt, Accounting integration", "Fiat, Digital currencies (USD, USDC/T)", "Xero, Sage, Quickbooks, Fireblocks, DBS"],
+                    ["AXS Checkout", "Real-time confirm, Auto reconcile", "Visa, MC, PayNow (planned)", "E-commerce platforms"],
+                    ["EzyPayment", "Auto pay/collect/reconcile, Schedule", "Card, Bank transfer, QR, eGIRO", "Xero, MYOB, QuickBooks, ERPs"],
+                    ["Citi Payall", "Scheduling, Notifications", "Citi Cards, Bank transfers", "Retail partners"],
+                    ["SC EasyBill", "No advanced automation", "SC credit cards", "None explicit"],
+                    ["Aspire", "AI accounting/expense/bill pay", "Multi-currency accounts, Corp cards, Global pay", "Citibank, JPMorgan, Visa, Xero, QuickBooks"],
+                    ["Airwallex", "AI spend mgmt, Auto bill pay, Adaptive success", "160+ local methods, Cards, Wallets", "Shopify, WooCommerce, Xero, NetSuite"],
+                    ["Nium/Instarem", "Instant account verify, Real-time money move", "Bank accounts, Wallets, Cards (payouts)", "Swift, G2 Travel, Ecobank, J.P. Morgan"],
+                    ["Wise", ">99% STP, Auto compliance, Custom KYC", "40+ currencies, Local bank acc, Debit cards", "Morgan Stanley, Monzo, Google Pay, Xero"],
+                    ["Razorpay", "AI reconcile, Auto payroll/ESCROW+", "100+ methods (Cards, UPI, Wallets, QR)", "AWS, Snowflake, ONDC"],
+                    ["Stripe", "AI fraud (Radar), Accounting auto, Revenue recog", "100+ methods (Cards, PayPal, BNPL)", "Shopify, WooCommerce, Salesforce, Xero"],
+                    ["Bilt Rewards", "Data modeling (dbt Cloud)", "Rent payments", "dbt Labs"],
+                    ["Melio", "Auto bill capture, 2-way sync, Approval flow", "ACH, Wire, Check, Cards, Intl pay", "QuickBooks, Xero, Amazon Biz, Shopify"],
+                    ["Adfin", "AI invoice parse, Auto send/chase/reconcile", "Direct Debit, Open Banking, Transfers, Cards", "FreeAgent"],
+                    ["ConnexPay", "AI fraud, Auto reconcile", "Cards, Wallets, Virtual cards, ACH", "Kount, Mastercard, Visa, StoneEagle"],
+                    ["GetPaid.io", "AI AR auto, Auto collect/reconcile, Predictive", "Cards, DD, Transfers, Wallets, Links, QR", "SAP, Oracle (ERPs)"]
+                ]
+            }
+        };
+        
+        function showComparativeTable(tableId) {
+            currentComparativeTable = tableId;
+            document.querySelectorAll('.comparative-table-content').forEach(el => el.style.display = 'none');
+            const containerId = tableId + 'Container';
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.style.display = 'block';
+                if (!container.innerHTML.includes('<table')) { // Render only if not already rendered
+                    renderTable(container, comparativeTablesData[tableId]);
+                }
+            }
+            const dropdownButton = document.querySelector('#mainNav .dropdown button[onclick*="comparativeAnalysis"]');
+            if (dropdownButton) {
+                 navButtons.forEach(btn => btn.classList.remove('active'));
+                 dropdownButton.classList.add('active');
+            }
+             showSection('comparativeAnalysis');
+        }
+
+        function renderTable(container, tableContent) {
+            if (!tableContent) return;
+            let tableHTML = '<table class="w-full border-collapse">';
+            tableHTML += '<thead><tr>';
+            tableContent.headers.forEach(header => tableHTML += `<th class="table-header">${header}</th>`);
+            tableHTML += '</tr></thead><tbody>';
+            tableContent.data.forEach(row => {
+                tableHTML += '<tr>';
+                row.forEach(cell => tableHTML += `<td class="table-cell">${cell}</td>`);
+                tableHTML += '</tr>';
+            });
+            tableHTML += '</tbody></table>';
+            container.innerHTML = tableHTML;
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            showSection('overview');
+            renderCompetitors('all'); 
+            
+            const growthCtx = document.getElementById('apacGrowthChart').getContext('2d');
+            new Chart(growthCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['APAC', 'Europe', 'North America'],
+                    datasets: [{
+                        label: 'Non-Cash Payment Growth YoY (2024)',
+                        data: [20.4, 15.5, 6.4],
+                        backgroundColor: ['#38bdf8', '#60a5fa', '#93c5fd'],
+                        borderColor: ['#0284c7', '#2563eb', '#3b82f6'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Growth Rate (%)' } }
+                    },
+                    plugins: { legend: { display: true }, tooltip: { enabled: true } }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
